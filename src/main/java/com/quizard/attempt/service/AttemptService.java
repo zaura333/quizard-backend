@@ -66,6 +66,7 @@ public class AttemptService {
                     .pointsEarned(earned)
                     .maxPoints(ocenialne.obliczPunkty())
                     .givenAnswer(given)
+                    .correctAnswer(extractCorrectAnswer(pytanie))
                     .build());
         }
 
@@ -106,10 +107,24 @@ public class AttemptService {
 
         return AttemptResult.builder()
                 .quizId(quiz.getId())
-                .quizType("OSOBOWOSCI")
+                .quizType(quiz.getClass().getSimpleName())
                 .personalityResult(winner)
                 .personalityVotes(votes)
                 .build();
+    }
+
+    private String extractCorrectAnswer(Pytanie pytanie) {
+        return switch (pytanie) {
+            case Standard s         -> s.getPoprawnaOdpowiedz();
+            case PrawdaFalsz pf     -> String.valueOf(pf.isPoprawnaOdpowiedz());
+            case UzupelnianieLukPytanie ul -> String.join(", ", ul.getPoprawneOdpowiedzi());
+            case Dopasowanie d      -> d.getPoprawneParry().entrySet().stream()
+                    .map(e -> e.getKey() + ": " + e.getValue())
+                    .reduce((a, b) -> a + " | " + b)
+                    .orElse("");
+            case MultiWybor m       -> m.getPoprawneOdpowiedzi();
+            default                 -> null;
+        };
     }
 
     private void validateTimeLimit(Quiz quiz, Long startedAtEpochMs) {
