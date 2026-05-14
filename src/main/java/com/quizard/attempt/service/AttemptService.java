@@ -8,6 +8,7 @@ import com.quizard.quiz.model.*;
 import com.quizard.quiz.repository.QuizRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 
@@ -17,6 +18,7 @@ public class AttemptService {
 
     private final QuizRepository quizRepository;
 
+    @Transactional(readOnly = true)
     public AttemptResult evaluate(Long quizId, AttemptRequest request) {
         Quiz quiz = quizRepository.findById(quizId)
                 .orElseThrow(() -> new ResourceNotFoundException("Quiz nie istnieje"));
