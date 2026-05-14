@@ -1,5 +1,7 @@
 package com.quizard.question.model;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -37,7 +39,9 @@ public class Dopasowanie extends Pytanie implements Ocenialne {
     @Column(nullable = false)
     private int punkty;
 
-    // odpowiedź jako "lewy1:prawy1,lewy2:prawy2"
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    // odpowiedź jako JSON: {"lewy1":"prawy1","lewy2":"prawy2"}
     @Override
     public boolean sprawdzOdpowiedz(String odpowiedz) {
         Map<String, String> podane = parsujOdpowiedz(odpowiedz);
@@ -50,13 +54,11 @@ public class Dopasowanie extends Pytanie implements Ocenialne {
     }
 
     private Map<String, String> parsujOdpowiedz(String odpowiedz) {
-        Map<String, String> wynik = new LinkedHashMap<>();
-        for (String para : odpowiedz.split(",")) {
-            String[] czesci = para.split(":");
-            if (czesci.length == 2) {
-                wynik.put(czesci[0].trim(), czesci[1].trim());
-            }
+        if (odpowiedz == null || odpowiedz.isBlank()) return new LinkedHashMap<>();
+        try {
+            return MAPPER.readValue(odpowiedz, new TypeReference<Map<String, String>>() {});
+        } catch (Exception e) {
+            return new LinkedHashMap<>();
         }
-        return wynik;
     }
 }
