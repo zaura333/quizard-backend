@@ -1,6 +1,6 @@
 # Quizard – Backend
 
-Backend aplikacji webowej Quizard, umożliwiającej tworzenie i rozwiązywanie quizów. Projekt realizowany w ramach kursu **Programowanie Obiektowe**.
+Backend aplikacji webowej Quizard, umożliwiającej tworzenie i rozwiązywanie quizów.
 
 ---
 

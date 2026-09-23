@@ -48,6 +48,9 @@ public class QuizService {
                 .orElseThrow(() -> new ResourceNotFoundException("Użytkownik nie istnieje"));
 
         Quiz quiz = buildQuiz(request);
+        quiz.setTitle(request.getTitle());
+        quiz.setDescription(request.getDescription());
+        quiz.setCategory(request.getCategory());
         quiz.setAuthor(author);
         return quizRepository.save(quiz);
     }

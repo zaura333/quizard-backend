@@ -4,10 +4,12 @@ import com.quizard.attempt.dto.AttemptRequest;
 import com.quizard.attempt.dto.AttemptResult;
 import com.quizard.common.exception.ResourceNotFoundException;
 import com.quizard.question.model.*;
+import com.quizard.question.repository.PytanieRepository;
 import com.quizard.quiz.model.*;
 import com.quizard.quiz.repository.QuizRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 
@@ -16,7 +18,9 @@ import java.util.*;
 public class AttemptService {
 
     private final QuizRepository quizRepository;
+    private final PytanieRepository pytanieRepository;
 
+    @Transactional(readOnly = true)
     public AttemptResult evaluate(Long quizId, AttemptRequest request) {
         Quiz quiz = quizRepository.findById(quizId)
                 .orElseThrow(() -> new ResourceNotFoundException("Quiz nie istnieje"));
@@ -48,7 +52,8 @@ public class AttemptService {
         int totalPoints = 0;
         int maxPoints = 0;
 
-        for (Pytanie pytanie : quiz.getPytania()) {
+        List<Pytanie> pytania = pytanieRepository.findByQuizIdOrderByKolejnoscAsc(quiz.getId());
+        for (Pytanie pytanie : pytania) {
             if (!(pytanie instanceof Ocenialne ocenialne)) continue;
 
             String given = answersMap.getOrDefault(pytanie.getId(), "");
@@ -64,6 +69,7 @@ public class AttemptService {
                     .pointsEarned(earned)
                     .maxPoints(ocenialne.obliczPunkty())
                     .givenAnswer(given)
+                    .correctAnswer(extractCorrectAnswer(pytanie))
                     .build());
         }
 
@@ -85,8 +91,9 @@ public class AttemptService {
             votes.put(wynik, 0);
         }
 
+        List<Pytanie> pytania = pytanieRepository.findByQuizIdOrderByKolejnoscAsc(quiz.getId());
         for (AttemptRequest.AnswerDto a : request.getAnswers()) {
-            quiz.getPytania().stream()
+            pytania.stream()
                     .filter(p -> p.getId().equals(a.getQuestionId()))
                     .filter(p -> p instanceof PytanieOsobowosci)
                     .map(p -> (PytanieOsobowosci) p)
@@ -104,10 +111,24 @@ public class AttemptService {
 
         return AttemptResult.builder()
                 .quizId(quiz.getId())
-                .quizType("OSOBOWOSCI")
+                .quizType(quiz.getClass().getSimpleName())
                 .personalityResult(winner)
                 .personalityVotes(votes)
                 .build();
+    }
+
+    private String extractCorrectAnswer(Pytanie pytanie) {
+        return switch (pytanie) {
+            case Standard s         -> s.getPoprawnaOdpowiedz();
+            case PrawdaFalsz pf     -> String.valueOf(pf.isPoprawnaOdpowiedz());
+            case UzupelnianieLukPytanie ul -> String.join(", ", ul.getPoprawneOdpowiedzi());
+            case Dopasowanie d      -> d.getPoprawneParry().entrySet().stream()
+                    .map(e -> e.getKey() + ": " + e.getValue())
+                    .reduce((a, b) -> a + " | " + b)
+                    .orElse("");
+            case MultiWybor m       -> m.getPoprawneOdpowiedzi();
+            default                 -> null;
+        };
     }
 
     private void validateTimeLimit(Quiz quiz, Long startedAtEpochMs) {
